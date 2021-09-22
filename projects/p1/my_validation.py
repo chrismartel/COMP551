@@ -3,6 +3,7 @@
 
 from sklearn.neighbors import KNeighborsClassifier
 import numpy as np
+import time
 
 
 # VALIDATION METRICS
@@ -11,7 +12,7 @@ import numpy as np
 loss = lambda y, y_pred: np.mean((y-y_pred)**2)
 
 #define accuracy function
-accuracy = lambda y, y_pred: np.sum(y == y_pred)/y.size
+error_rate = lambda y, y_pred: np.sum(y != y_pred)/y.size
 
 
 
@@ -39,13 +40,23 @@ def cross_validate_splits(n, n_folds=5):
     return splits
 
 
-def knn_cross_validation(x, y, K_list, L, validation_metric_fn):
+def knn_cross_validation(x, y, K_list, L=10, validation_metric_fn=error_rate):
     '''Perform L-Fold cross-validation on x for each K (number of neighbor) value in K_list using 
-       scikit-learn KNN model.'''
+       scikit-learn KNN model.
+       
+       x: features
+       y: true prediction labels
+       K_list: list of values for parameter K
+       L: number of folds
+       validation_metric_fn: function used to validate the prediction
+    '''
     num_instances = x.shape[0]
         
     # l-fold cross validation splits
     n_folds_splits = cross_validate_splits(num_instances, n_folds=L)
+    
+    if int(1/L*num_instances) < max(K_list):
+        print("Error: max number of neighbors is bigger than validation set size")
 
     # K x L matrix
     val_matrix = np.zeros((len(K_list),L))
