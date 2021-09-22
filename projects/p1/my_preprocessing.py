@@ -53,14 +53,14 @@ def strip_labels(df):
 def valid_train_test_split(data):
     '''Return a valid train test split in which '''
     while(not valid_split):
-    inds = np.random.permutation(num_instances)
-    train, test = data[:train_size, :], data[train_size:, :]
-    x_train, y_train = train[:,1:], train[:,1]
-    x_test, y_test = test[:,1:], test[:,1]
-    
-    train_values = y_train.unique()
-    test_values = y_test.unique()
-    
+        inds = np.random.permutation(num_instances)
+        train, test = data[:train_size, :], data[train_size:, :]
+        x_train, y_train = train[:,1:], train[:,1]
+        x_test, y_test = test[:,1:], test[:,1]
+
+        train_values = y_train.unique()
+        test_values = y_test.unique()
+
     valid_split = True
     for value in test_values:
         if value not in train_values:
