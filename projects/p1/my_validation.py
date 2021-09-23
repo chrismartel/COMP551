@@ -2,6 +2,7 @@
 # Date: 2021-09-20
 
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 import time
 
@@ -64,6 +65,80 @@ def knn_cross_validation(x, y, K_list, L=10, validation_metric_fn=error_rate):
 
     for i, K in enumerate(K_list):
         model = KNeighborsClassifier(n_neighbors=K)
+        for j, split in enumerate(n_folds_splits):
+            # split into train set and validation set
+            x_train, x_val = x[split[0], :], x[split[1], :]
+            y_train, y_val = y[split[0]], y[split[1]]
+
+            model.fit(x_train, y_train)
+
+            y_pred_val = model.predict(x_val)
+            y_pred_train = model.predict(x_train)
+            
+            val_metric = validation_metric_fn(y_val, y_pred_val)            
+            train_metric = validation_metric_fn(y_train, y_pred_train)
+
+            val_matrix[i][j] = val_metric
+            train_matrix[i][j] = train_metric
+
+    return val_matrix, train_matrix
+
+# define MSE loss function
+loss = lambda y, y_pred: np.mean((y-y_pred)**2)
+
+#define accuracy function
+accuracy = lambda y, y_pred: np.sum(y == y_pred)/y.size
+
+def decision_tree_cross_validation(x,y,max_d_list,min_samples_per_leaves_list,L,validation_metric_fn):
+
+    num_instances = x.shape[0]
+
+    # l-fold cross validation splits
+    n_folds_splits = cross_validate_splits(num_instances, n_folds=L)
+
+    # validation metrics
+    val_matrix = np.zeros((len(max_d_list),len(min_samples_per_leaves_list),L))
+    train_matrix = np.zeros((len(max_d_list),len(min_samples_per_leaves_list),L))
+
+    for i, M in enumerate(max_d_list):
+        for j, S in enumerate(min_samples_per_leaves_list):
+            model = DecisionTreeClassifier(max_depth = max_d_list[i], min_samples_leaf = min_samples_per_leaves_list[j])
+            for k, split in enumerate(n_folds_splits):
+                # split into train set and validation set
+                x_train, x_val = x[split[0], :], x[split[1], :]
+                y_train, y_val = y[split[0]], y[split[1]]
+
+                model.fit(x_train, y_train)
+
+                val_metric = validation_metric_fn(y_val, y_pred_val)
+                train_metric = validation_metric_fn(y_train, y_pred_train)
+
+                val_matrix[i][j] = val_metric
+                train_matrix[i][j] = train_metric
+
+    return val_matrix, train_matrix
+
+def dt_cross_validation(x, y, maximum_depth, L=10, validation_metric_fn=error_rate):
+    '''x: features
+       y: true prediction labels
+       maximum_depth: list of values for chosen parameter 
+       L: number of folds
+       validation_metric_fn: function used to validate the prediction
+    '''
+    num_instances = x.shape[0]
+        
+    # l-fold cross validation splits
+    n_folds_splits = cross_validate_splits(num_instances, n_folds=L)
+    
+    if int(1/L*num_instances) < max(maximum_depth):
+        print("Error: max number of neighbors is bigger than validation set size")
+
+    # K x L matrix
+    val_matrix = np.zeros((len(maximum_depth),L))
+    train_matrix = np.zeros((len(maximum_depth),L))
+
+    for i, K in enumerate(maximum_depth):
+        model = DecisionTreeClassifier(max_depth=K)
         for j, split in enumerate(n_folds_splits):
             # split into train set and validation set
             x_train, x_val = x[split[0], :], x[split[1], :]
