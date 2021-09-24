@@ -52,18 +52,19 @@ def knn_cross_validation(x, y, K_list, L=10, validation_metric_fn=error_rate):
        validation_metric_fn: function used to validate the prediction
     '''
     num_instances = x.shape[0]
+    train_set_size = int((L-1)/L*num_instances);
         
     # l-fold cross validation splits
     n_folds_splits = cross_validate_splits(num_instances, n_folds=L)
     
-    if int(1/L*num_instances) < max(K_list):
-        print("Error: max number of neighbors is bigger than validation set size")
-
     # K x L matrix
     val_matrix = np.zeros((len(K_list),L))
     train_matrix = np.zeros((len(K_list),L))
 
+
     for i, K in enumerate(K_list):
+        if K > train_set_size:
+          break
         model = KNeighborsClassifier(n_neighbors=K)
         for j, split in enumerate(n_folds_splits):
             # split into train set and validation set
@@ -91,117 +92,42 @@ accuracy = lambda y, y_pred: np.sum(y == y_pred)/y.size
 
 
 # For Decision Tree with Maximum Depth Parameter
-
-def dt_cross_validation_max_depth(x, y, maximum_depth, L=10, validation_metric_fn=error_rate):
+def dt_cross_validation(x, y, max_depth_list=list(), min_samples_per_leaf_list=list(), L=10, validation_metric_fn=error_rate):
     '''x: features
        y: true prediction labels
-       maximum_depth: list of values for chosen parameter 
+       max_depth_list: range of values to test for max depth
+       min_samples_per_leaf_list: range of values to test for min_samples_per_leaf
        L: number of folds
        validation_metric_fn: function used to validate the prediction
     '''
     num_instances = x.shape[0]
-        
+
     # l-fold cross validation splits
     n_folds_splits = cross_validate_splits(num_instances, n_folds=L)
     
-    if int(1/L*num_instances) < max(maximum_depth):
-        print("Error: max number of neighbors is bigger than validation set size")
+    # parameter ranges
+    max_depth_range = 1 if not max_depth_list else len(max_depth_list)
+    min_samples_range = 1 if not min_samples_per_leaf_list else len(min_samples_per_leaf_list)
 
     # K x L matrix
-    val_matrix = np.zeros((len(maximum_depth),L))
-    train_matrix = np.zeros((len(maximum_depth),L))
+    val_matrix, train_matrix = np.zeros((max_depth_range,min_samples_range,L)), np.zeros((max_depth_range,min_samples_range,L))
 
-    for i, K in enumerate(maximum_depth):
-        model = DecisionTreeClassifier(max_depth=K)
-        for j, split in enumerate(n_folds_splits):
-            # split into train set and validation set
-            x_train, x_val = x[split[0], :], x[split[1], :]
-            y_train, y_val = y[split[0]], y[split[1]]
+    for i in range(max_depth_range):
+      md = None if not max_depth_list else max_depth_list[i]
+      for j in range(min_samples_range):
+          ms = 1 if not min_samples_per_leaf_list else min_samples_per_leaf_list[j]
+          model = DecisionTreeClassifier(max_depth=md, min_samples_leaf=ms)
+          for k, split in enumerate(n_folds_splits):
+              # split into train set and validation set
+              x_train, x_val = x[split[0], :], x[split[1], :]
+              y_train, y_val = y[split[0]], y[split[1]]
 
-            model.fit(x_train, y_train)
+              model.fit(x_train, y_train)
 
-            y_pred_val = model.predict(x_val)
-            y_pred_train = model.predict(x_train)
-            
-            val_metric = validation_metric_fn(y_val, y_pred_val)            
-            train_metric = validation_metric_fn(y_train, y_pred_train)
+              y_pred_val, y_pred_train = model.predict(x_val), model.predict(x_train)
+          
+              val_metric, train_metric = validation_metric_fn(y_val, y_pred_val), validation_metric_fn(y_train, y_pred_train)           
 
-            val_matrix[i][j] = val_metric
-            train_matrix[i][j] = train_metric
+              val_matrix[i][j][k], train_matrix[i][j][k] = val_metric, train_metric
 
-    return val_matrix, train_matrix
-
-# For Decision Tree with Minimum Samples per Leaf Parameter
-
-def dt_cross_validation_min_samples(x, y, minimum_samples, L=10, validation_metric_fn=error_rate):
-    '''x: features
-       y: true prediction labels
-       minimum_samples: list of values for chosen parameter 
-       L: number of folds
-       validation_metric_fn: function used to validate the prediction
-    '''
-    num_instances = x.shape[0]
-        
-    # l-fold cross validation splits
-    n_folds_splits = cross_validate_splits(num_instances, n_folds=L)
-    
-    if int(1/L*num_instances) < max(minimum_samples):
-        print("Error: min numbers of samples per leaf is bigger than validation set size")
-
-    # K x L matrix
-    val_matrix = np.zeros((len(minimum_samples),L))
-    train_matrix = np.zeros((len(minimum_samples),L))
-
-    for i, K in enumerate(minimum_samples):
-        model = DecisionTreeClassifier(min_samples_leaf=K)
-        for j, split in enumerate(n_folds_splits):
-            # split into train set and validation set
-            x_train, x_val = x[split[0], :], x[split[1], :]
-            y_train, y_val = y[split[0]], y[split[1]]
-
-            model.fit(x_train, y_train)
-
-            y_pred_val = model.predict(x_val)
-            y_pred_train = model.predict(x_train)
-            
-            val_metric = validation_metric_fn(y_val, y_pred_val)            
-            train_metric = validation_metric_fn(y_train, y_pred_train)
-
-            val_matrix[i][j] = val_metric
-            train_matrix[i][j] = train_metric
-
-    return val_matrix, train_matrix
-
-# For max depth param and min samples per leaf param combined
-
-def decision_tree_cross_validation(x,y,max_d_list,min_samples_per_leaves_list,L,validation_metric_fn=error_rate):
-
-    num_instances = x.shape[0]
-
-    # l-fold cross validation splits
-    n_folds_splits = cross_validate_splits(num_instances, n_folds=L)
-
-    # validation metrics
-    val_matrix = np.zeros((len(max_d_list),len(min_samples_per_leaves_list),L))
-    train_matrix = np.zeros((len(max_d_list),len(min_samples_per_leaves_list),L))
-
-    for i, M in enumerate(max_d_list):
-        for j, S in enumerate(min_samples_per_leaves_list):
-            model = DecisionTreeClassifier(max_depth = max_d_list[i], min_samples_leaf = min_samples_per_leaves_list[j])
-            for k, split in enumerate(n_folds_splits):
-                # split into train set and validation set
-                x_train, x_val = x[split[0], :], x[split[1], :]
-                y_train, y_val = y[split[0]], y[split[1]]
-
-                model.fit(x_train, y_train)
-                
-                y_pred_val = model.predict(x_val)
-                y_pred_train = model.predict(x_train)
-
-                val_metric = validation_metric_fn(y_val, y_pred_val)
-                train_metric = validation_metric_fn(y_train, y_pred_train)
-
-                val_matrix[i][j] = val_metric
-                train_matrix[i][j] = train_metric
-
-    return val_matrix, train_matrix
+    return np.squeeze(val_matrix), np.squeeze(train_matrix)
