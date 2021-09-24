@@ -118,7 +118,9 @@ def decision_tree_cross_validation(x,y,max_d_list,min_samples_per_leaves_list,L,
 
     return val_matrix, train_matrix
 
-def dt_cross_validation(x, y, maximum_depth, L=10, validation_metric_fn=error_rate):
+# For Decision Tree with Maximum Depth Parameter
+
+def dt_cross_validation_max_depth(x, y, maximum_depth, L=10, validation_metric_fn=error_rate):
     '''x: features
        y: true prediction labels
        maximum_depth: list of values for chosen parameter 
@@ -139,6 +141,47 @@ def dt_cross_validation(x, y, maximum_depth, L=10, validation_metric_fn=error_ra
 
     for i, K in enumerate(maximum_depth):
         model = DecisionTreeClassifier(max_depth=K)
+        for j, split in enumerate(n_folds_splits):
+            # split into train set and validation set
+            x_train, x_val = x[split[0], :], x[split[1], :]
+            y_train, y_val = y[split[0]], y[split[1]]
+
+            model.fit(x_train, y_train)
+
+            y_pred_val = model.predict(x_val)
+            y_pred_train = model.predict(x_train)
+            
+            val_metric = validation_metric_fn(y_val, y_pred_val)            
+            train_metric = validation_metric_fn(y_train, y_pred_train)
+
+            val_matrix[i][j] = val_metric
+            train_matrix[i][j] = train_metric
+
+    return val_matrix, train_matrix
+
+# For Decision Tree with Minimum Samples per Leaf Parameter
+
+def dt_cross_validation_min_samples(x, y, minimum_samples, L=10, validation_metric_fn=error_rate):
+    '''x: features
+       y: true prediction labels
+       minimum_samples: list of values for chosen parameter 
+       L: number of folds
+       validation_metric_fn: function used to validate the prediction
+    '''
+    num_instances = x.shape[0]
+        
+    # l-fold cross validation splits
+    n_folds_splits = cross_validate_splits(num_instances, n_folds=L)
+    
+    if int(1/L*num_instances) < max(minimum_samples):
+        print("Error: min numbers of samples per leaf is bigger than validation set size")
+
+    # K x L matrix
+    val_matrix = np.zeros((len(minimum_samples),L))
+    train_matrix = np.zeros((len(minimum_samples),L))
+
+    for i, K in enumerate(minimum_samples):
+        model = DecisionTreeClassifier(min_samples_leaf=K)
         for j, split in enumerate(n_folds_splits):
             # split into train set and validation set
             x_train, x_val = x[split[0], :], x[split[1], :]
