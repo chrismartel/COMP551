@@ -174,7 +174,7 @@ def dt_cross_validation_min_samples(x, y, minimum_samples, L=10, validation_metr
 
 # For max depth param and min samples per leaf param combined
 
-def decision_tree_cross_validation(x,y,max_d_list,min_samples_per_leaves_list,L,validation_metric_fn):
+def decision_tree_cross_validation(x,y,max_d_list,min_samples_per_leaves_list,L,validation_metric_fn=error_rate):
 
     num_instances = x.shape[0]
 
@@ -194,6 +194,9 @@ def decision_tree_cross_validation(x,y,max_d_list,min_samples_per_leaves_list,L,
                 y_train, y_val = y[split[0]], y[split[1]]
 
                 model.fit(x_train, y_train)
+                
+                y_pred_val = model.predict(x_val)
+                y_pred_train = model.predict(x_train)
 
                 val_metric = validation_metric_fn(y_val, y_pred_val)
                 train_metric = validation_metric_fn(y_train, y_pred_train)
